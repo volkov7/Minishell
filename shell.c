@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/12 18:50:22 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/13 15:58:15 by jsance           ###   ########.fr       */
+/*   Updated: 2020/01/16 19:15:17 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,16 @@
 
 void	display_prompt(void)
 {
-	ft_printf("$> ");
+	ft_putstr("$> ");
+}
+
+void	printenv(t_data *data)
+{
+	size_t	i;
+
+	i = -1;
+	while (data->copy_env[++i])
+		ft_putendl((const char *)data->copy_env[i]);
 }
 
 char	*get_input(void)
@@ -148,13 +157,43 @@ void	clean_data(t_data **data, int flag)
 		free(*data);
 }
 
-int		go_echo(char *input, t_data *data)
+void	ft_put_no_quote(char *str, char *quote)
+{
+	int		i;
+	
+	i = -1;
+	while (str[++i])
+	{
+		if (*quote == 0x0)
+		{
+			if (IS_QUOTE(str[i]))
+			{
+				*quote = str[i];
+				continue ;
+			}
+			ft_putchar(str[i]);
+		}
+		else
+		{
+			if (str[i] == *quote)
+			{
+				*quote = 0x0;
+				continue ;
+			}
+			ft_putchar(str[i]);
+		}
+	}
+}
+
+int		echo_builtin(char *input, t_data *data)
 {
 	size_t	i;
 	size_t	n;
+	char	quote;
 
 	i = 0;
 	n = 0;
+	quote = 0x0;
 	if (data->split_input[1] != NULL)
 	{
 		if (ft_strcmp(data->split_input[1], "-n") == 0)
@@ -163,23 +202,102 @@ int		go_echo(char *input, t_data *data)
 			n = 1;
 		}
 		while (data->split_input[++i])
-			ft_printf("%s ", data->split_input[i]);	
+		{
+			ft_put_no_quote(data->split_input[i], &quote);
+			ft_putstr((data->split_input[i + 1]) ? " " : "");
+		}
 	}
-	ft_printf((n) ? "" : "\n");
+	ft_putstr((n) ? "" : "\n");
 	return(1);
+}
+
+char	*get_env(t_data *data, const char *searching)
+{
+	size_t	i;
+
+	i = -1;
+	while (data->copy_env[++i])
+	{
+		if (ft_strstr(data->copy_env[i], searching))
+			return (ft_strchr(data->copy_env[i], '=') + 1);
+	}
+	return (NULL);
+}
+
+size_t		find_env(t_data *data, const char *searching)
+{
+	size_t	i;
+
+	i = -1;
+	while (data->copy_env[++i])
+	{
+		if (ft_strstr(data->copy_env[i], searching))
+			return (i);
+	}
+	return (i);
+}
+
+void	update_env(const char *env_var, t_data *data, char *new_val)
+{
+	size_t	pos;
+	
+	pos = find_env(data, env_var);
+	if (data->copy_env[pos])
+	{
+		free(data->copy_env[pos]);
+		if (new_val)
+			data->copy_env[pos] = ft_strjoin(env_var, new_val);
+		else
+			data->copy_env[pos] = ft_strjoin(env_var, NULL);
+	}
+	printenv(data);
+}
+
+int		chg_dir(t_data *data, char *path, int print)
+{
+	char	*cwd;
+	char	*buf;
+
+	buf = NULL;
+	cwd = getcwd(buf, 1);
+	if (!(chdir(path)))
+	{
+		// if (print)
+		// {
+			
+		// }
+		update_env("OLDPWD=", data, cwd);
+	}
+	return (1);
+}
+
+int		cd_builtin(t_data *data)
+{
+	char	*path;
+
+	path = 	get_env(data, "HOME=");
+	if (data->split_input[1] == NULL)
+	{
+		chg_dir(data, path, 0);
+		return (1);
+	}
+	return (1);
 }
 
 int		check_builtin(char *input, t_data *data)
 {
 	if (ft_strcmp(data->split_input[0], "echo") == 0)
-		return (go_echo(input, data));
+		return (echo_builtin(input, data));
+	else if (ft_strcmp(data->split_input[0], "cd") == 0)
+		return (cd_builtin(data));
 	return (0);
 }
 
 void	check_input(char *input, t_data *data)
 {
-	check_builtin(input, data);
-	// try_exec(input, data);
+	if (check_builtin(input, data));
+	else
+		try_exec(input, data);
 }
 
 int		main(int argc, char **argv, char **env)
@@ -190,6 +308,7 @@ int		main(int argc, char **argv, char **env)
 	input = NULL;
 	create_st(&data);
 	init_env(env, &data);
+	printenv(data);
 	while (1)
 	{
 		display_prompt();
