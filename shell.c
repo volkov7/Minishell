@@ -45,14 +45,13 @@ void	init_env(char **env, t_data **data)
 	while (env[i])
 		i++;
 	(*data)->copy_env = (char**)malloc(sizeof(char*) * i + 1);
-	i = 0;
-	while (env[i])
+	i = -1;
+	while (env[++i])
 	{
-		(*data)->copy_env[i] = (char*)malloc(sizeof(char) * ft_strlen(env[i]) + 1);
+		(*data)->copy_env[i] = ft_strnew(ft_strlen(env[i]) + 1);
 		ft_strcpy((*data)->copy_env[i], env[i]);
 		if (ft_strncmp((const char *)(*data)->copy_env[i], "PATH", 4) == 0)
 			(*data)->path = ft_strsplit((*data)->copy_env[i] + 5, ':');
-		i++;
 	}
 	(*data)->copy_env[i] = NULL;
 }
@@ -61,9 +60,9 @@ void	get_file(const char *path, const char *input, char **file)
 {
 	size_t	len;
 	
-	len = ft_strlen((const char *)path) + ft_strlen(input) + 2;
-	*file = (char*)malloc(sizeof(char)* len);
-	ft_bzero(*file, len);
+	len = ft_strlen(path) + ft_strlen(input) + 2;
+	if (!(*file = ft_strnew(len)))
+		exit(0);
 	ft_strcat(*file, path);
 	ft_strcat(*file, "/");
 	ft_strcat(*file, input);
@@ -91,7 +90,7 @@ void	go_exec(char *path, const char *input, t_data *data)
 					execve(file, (data->split_input), data->copy_env);
 			}
 			else
-				write(2, "minishell: permission denied: ", 30);
+				write(2, "minishell: permission denied: \n", 31);
 		}
 	}
 	free(file);
@@ -214,11 +213,13 @@ int		echo_builtin(char *input, t_data *data)
 char	*get_env(t_data *data, const char *searching)
 {
 	size_t	i;
+	size_t	len;
 
 	i = -1;
+	len = ft_strlen(searching);
 	while (data->copy_env[++i])
 	{
-		if (ft_strstr(data->copy_env[i], searching))
+		if (ft_strnequ(data->copy_env[i], searching, len))
 			return (ft_strchr(data->copy_env[i], '=') + 1);
 	}
 	return (NULL);
@@ -227,11 +228,13 @@ char	*get_env(t_data *data, const char *searching)
 size_t		find_env(t_data *data, const char *searching)
 {
 	size_t	i;
+	size_t	len;
 
 	i = -1;
+	len = ft_strlen(searching);
 	while (data->copy_env[++i])
 	{
-		if (ft_strstr(data->copy_env[i], searching))
+		if (ft_strnequ(data->copy_env[i], searching, len))
 			return (i);
 	}
 	return (i);
@@ -250,36 +253,122 @@ void	update_env(const char *env_var, t_data *data, char *new_val)
 		else
 			data->copy_env[pos] = ft_strjoin(env_var, NULL);
 	}
-	printenv(data);
+}
+
+void	print_path(t_data *data)
+{
+	char	*home;
+	char	*oldpwd;
+	size_t	len_home;
+	size_t	len_oldpwd;
+	char	*print_path;
+
+	home = get_env(data, "HOME=");
+	oldpwd = get_env(data, "OLDPWD=");
+	len_home = ft_strlen((const char *)home);
+	len_oldpwd = ft_strlen((const char *)oldpwd);
+	if (!(print_path = ft_strnew(len_oldpwd - len_home + 1)))
+		exit(0);
+	ft_strcat(print_path, "~");
+	ft_strcat(print_path, oldpwd + len_home);
+	ft_putendl((const char *)print_path);
+	free(print_path);
 }
 
 int		chg_dir(t_data *data, char *path, int print)
 {
-	char	*cwd;
-	char	*buf;
+	char	cwd[PATH_MAX];
 
-	buf = NULL;
-	cwd = getcwd(buf, 1);
+	getcwd(cwd, PATH_MAX);
 	if (!(chdir(path)))
 	{
-		// if (print)
-		// {
-			
-		// }
+		if (print)
+			print_path(data);
 		update_env("OLDPWD=", data, cwd);
+		getcwd(cwd, PATH_MAX);
+		update_env("PWD=", data, cwd);
+	}
+	else
+	{
+		write(2, "cd: ", 4);
+		if (access(path, F_OK) == -1)
+			write(2, "no such file or directory: ", 27);
+		else if (access(path, R_OK) == -1)
+			write(2, "permission denied: ", 19);
+		else
+			write(2, "not a directory: ", 17);
+		write(2, path, ft_strlen(path));
+		write(2, "\n", 1);
 	}
 	return (1);
 }
 
+char	*path_replace(char *cwd, t_data *data)
+{
+	char	*tmp;
+	size_t	len_cwd;
+	size_t	rep_len;
+	size_t	tmp_len;
+	size_t	ind;
+
+	if (!(tmp = ft_strstr(cwd, data->split_input[1])))
+		return (NULL);
+	tmp_len = ft_strlen((const char *)tmp);
+	rep_len = ft_strlen((const char *)data->split_input[2]);
+	len_cwd = ft_strlen((const char *)cwd);
+	if (!(tmp = ft_strnew(len_cwd - 1 + rep_len)))
+		exit (0);
+	ind = len_cwd - tmp_len;
+	ft_strncpy(tmp, cwd, ind);
+	ft_strcat(tmp, data->split_input[2]);
+	ft_strcat(tmp, cwd + ind + 1);
+	return (tmp);
+}
+
+int		chk_two_args(t_data *data)
+{
+	char	cwd[PATH_MAX];
+	char	*tmp;
+	int		ret;
+
+	if (data->split_input[2])
+	{
+		if (data->split_input[3])
+		{
+			write(2, "cd: too many arguments\n", 23);
+			return (1);
+		}
+		getcwd(cwd, PATH_MAX);
+		if (!(tmp = path_replace(cwd, data)))
+		{
+			write(2, "cd: string not in pwd:", 22);
+			write(2, data->split_input[1], ft_strlen(data->split_input[1]));
+			write(2, "\n", 1);
+			return (1);
+		}
+		ret = chg_dir(data, tmp, 0);
+		free(tmp);
+		return (ret);
+	}
+	return (0);
+}
+
 int		cd_builtin(t_data *data)
 {
-	char	*path;
+	char	*home;
 
-	path = 	get_env(data, "HOME=");
+	home = 	get_env(data, "HOME=");
 	if (data->split_input[1] == NULL)
-	{
-		chg_dir(data, path, 0);
+		return ((home && *home) ? chg_dir(data, home, 0) : 1);
+	if (chk_two_args(data))
 		return (1);
+	else
+	{
+		if (ft_strcmp(data->split_input[1], "--") == 0)
+			return ((home && *home) ? chg_dir(data, home, 0) : 1);
+		else if (ft_strcmp(data->split_input[1], "-") == 0)
+			return (chg_dir(data, get_env(data, "OLDPWD="), 1));
+		return (chg_dir(data, data->split_input[1], 0));
 	}
 	return (1);
 }
@@ -290,6 +379,11 @@ int		check_builtin(char *input, t_data *data)
 		return (echo_builtin(input, data));
 	else if (ft_strcmp(data->split_input[0], "cd") == 0)
 		return (cd_builtin(data));
+	else if (ft_strcmp(data->split_input[0], "env") == 0)
+	{
+		printenv(data);
+		return (1);
+	}
 	return (0);
 }
 
@@ -308,7 +402,6 @@ int		main(int argc, char **argv, char **env)
 	input = NULL;
 	create_st(&data);
 	init_env(env, &data);
-	printenv(data);
 	while (1)
 	{
 		display_prompt();

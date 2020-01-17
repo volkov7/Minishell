@@ -20,6 +20,7 @@
 # include <sys/wait.h>
 
 # define IS_QUOTE(c) (c == '"' || c == '\'')
+# define PATH_MAX 1024
 
 typedef struct	s_data
 {
