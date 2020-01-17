@@ -87,7 +87,7 @@ void	go_exec(char *path, const char *input, t_data *data)
 				if (father > 0)
 					wait(&status);
 				if (father == 0)
-					execve(file, (data->split_input), data->copy_env);
+					execve(file, data->split_input, data->copy_env);
 			}
 			else
 				write(2, "minishell: permission denied: \n", 31);
