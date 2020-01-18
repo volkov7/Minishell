@@ -19,11 +19,12 @@ void	display_prompt(void)
 
 void	printenv(t_data *data)
 {
-	size_t	i;
+	int		i;
 
 	i = -1;
 	while (data->copy_env[++i])
-		ft_putendl((const char *)data->copy_env[i]);
+		ft_printf("[%d] = %s\n", i, data->copy_env[i]);
+		// ft_putendl((const char *)data->copy_env[i]);
 }
 
 char	*get_input(void)
@@ -50,7 +51,7 @@ void	init_env(char **env, t_data **data)
 	{
 		(*data)->copy_env[i] = ft_strnew(ft_strlen(env[i]) + 1);
 		ft_strcpy((*data)->copy_env[i], env[i]);
-		if (ft_strncmp((const char *)(*data)->copy_env[i], "PATH", 4) == 0)
+		if (ft_strncmp((const char *)(*data)->copy_env[i], "PATH=", 5) == 0)
 			(*data)->path = ft_strsplit((*data)->copy_env[i] + 5, ':');
 	}
 	(*data)->copy_env[i] = NULL;
@@ -69,7 +70,7 @@ void	get_file(const char *path, const char *input, char **file)
 	(*file)[len] = '\0';
 }
 
-void	go_exec(char *path, const char *input, t_data *data)
+void	go_exec(char *path, t_data *data, int	*flag)
 {
 	pid_t		father;
 	char		*file;
@@ -77,6 +78,7 @@ void	go_exec(char *path, const char *input, t_data *data)
 	struct stat	st;
 
 	get_file(path, data->split_input[0], &file);
+	*flag = 0;
 	if (lstat(file, &st) != -1)
 	{
 		if (st.st_mode & S_IFREG)
@@ -96,31 +98,54 @@ void	go_exec(char *path, const char *input, t_data *data)
 	free(file);
 }
 
-void	try_exec(const char *input, t_data *data)
+void	create_clean_path(t_data *data, char ***path, int clean)
+{
+	int		i;
+
+	i = -1;
+	if (clean)
+	{
+		while ((*path)[++i])
+			ft_strdel(&((*path)[i]));
+		free(*path);
+	}
+	else
+	{
+		*path = NULL;
+		while (data->copy_env[++i])
+		{
+			if (ft_strncmp((const char *)data->copy_env[i], "PATH=", 5) == 0)
+				*path = ft_strsplit(data->copy_env[i] + 5, ':');
+		}
+	}
+}
+
+void	try_exec(t_data *data)
 {
 	DIR				*dir;
     struct dirent	*dp;
 	size_t			i;
 	int				flag;
+	char			**path;
 
 	i = -1;
 	flag = 1;
-	while (data->path[++i] && flag)
+	create_clean_path(data, &path, 0);
+	if (path)
 	{
-		if ((dir = opendir(data->path[i])) == NULL)
+		while (path[++i] && flag)
 		{
-			closedir(dir);
-			continue ;
-		}
-		while ((dp = readdir(dir)) != NULL)
-		{
-			if (ft_strcmp(dp->d_name, data->split_input[0]) == 0)
+			if ((dir = opendir(path[i])) == NULL)
 			{
-				go_exec(data->path[i], input, data);
-				flag = 0;
+				closedir(dir);
+				continue ;
 			}
+			while ((dp = readdir(dir)) != NULL)
+				if (ft_strcmp(dp->d_name, data->split_input[0]) == 0)
+					go_exec(path[i], data, &flag);
+			closedir(dir);
 		}
-		closedir(dir);
+		create_clean_path(data, &path, 1);
 	}
 }
 
@@ -141,16 +166,16 @@ void	clean_data(t_data **data, int flag)
 	{
 		i = -1;
 		while ((*data)->path[++i])
-			free((*data)->path[i]);
+			ft_strdel(&(*data)->path[i]);
 		free((*data)->path);
 		i = -1;
 		while ((*data)->copy_env[++i])
-			free((*data)->copy_env[i]);
+			ft_strdel(&(*data)->copy_env[i]);
 		free((*data)->copy_env);
 	}
 	i = -1;
 	while ((*data)->split_input[++i])
-		free((*data)->split_input[i]);
+		ft_strdel(&(*data)->split_input[i]);
 	free((*data)->split_input);
 	if (flag)
 		free(*data);
@@ -184,7 +209,7 @@ void	ft_put_no_quote(char *str, char *quote)
 	}
 }
 
-int		echo_builtin(char *input, t_data *data)
+int		echo_builtin(t_data *data)
 {
 	size_t	i;
 	size_t	n;
@@ -214,14 +239,20 @@ char	*get_env(t_data *data, const char *searching)
 {
 	size_t	i;
 	size_t	len;
+	char	*tmp;
 
 	i = -1;
-	len = ft_strlen(searching);
+	tmp = ft_strjoin(searching, "=");
+	len = ft_strlen(tmp);
 	while (data->copy_env[++i])
 	{
-		if (ft_strnequ(data->copy_env[i], searching, len))
+		if (ft_strnequ(data->copy_env[i], tmp, len))
+		{
+			ft_strdel(&tmp);
 			return (ft_strchr(data->copy_env[i], '=') + 1);
+		}
 	}
+	ft_strdel(&tmp);
 	return (NULL);
 }
 
@@ -229,30 +260,67 @@ size_t		find_env(t_data *data, const char *searching)
 {
 	size_t	i;
 	size_t	len;
+	char	*tmp;
 
 	i = -1;
-	len = ft_strlen(searching);
+	tmp = ft_strjoin(searching, "=");
+	len = ft_strlen((const char *)tmp);
 	while (data->copy_env[++i])
 	{
-		if (ft_strnequ(data->copy_env[i], searching, len))
+		if (ft_strnequ(data->copy_env[i], tmp, len))
+		{
+			ft_strdel(&tmp);
 			return (i);
+		}
 	}
+	ft_strdel(&tmp);
 	return (i);
+}
+
+void	realloc_env(t_data **data, size_t len)
+{
+	char	**fresh;
+	size_t	i;
+
+	if (!(fresh = (char**)malloc(sizeof(char*) * len + 1)))
+		exit(0);
+	i = -1;
+	while ((*data)->copy_env[++i])
+	{
+		if (!(fresh[i] = ft_strdup((*data)->copy_env[i])))
+			exit(0);
+		ft_strdel(&((*data)->copy_env[i]));
+	}
+	fresh[i] = NULL;
+	fresh[i + 1] = NULL;
+	free((*data)->copy_env);
+	(*data)->copy_env = fresh;
 }
 
 void	update_env(const char *env_var, t_data *data, char *new_val)
 {
 	size_t	pos;
+	char	*tmp;
 	
 	pos = find_env(data, env_var);
+	tmp = ft_strjoin("=", new_val);
 	if (data->copy_env[pos])
 	{
 		free(data->copy_env[pos]);
 		if (new_val)
-			data->copy_env[pos] = ft_strjoin(env_var, new_val);
+			data->copy_env[pos] = ft_strjoin(env_var, tmp);
 		else
-			data->copy_env[pos] = ft_strjoin(env_var, NULL);
+			data->copy_env[pos] = ft_strjoin(env_var, "=");
 	}
+	else
+	{
+		realloc_env(&data, pos + 1);
+		if (new_val)
+			data->copy_env[pos] = ft_strjoin(env_var, tmp);
+		else
+			data->copy_env[pos] = ft_strjoin(env_var, "=");
+	}
+	ft_strdel(&tmp);
 }
 
 void	print_path(t_data *data)
@@ -263,8 +331,8 @@ void	print_path(t_data *data)
 	size_t	len_oldpwd;
 	char	*print_path;
 
-	home = get_env(data, "HOME=");
-	oldpwd = get_env(data, "OLDPWD=");
+	home = get_env(data, "HOME");
+	oldpwd = get_env(data, "OLDPWD");
 	len_home = ft_strlen((const char *)home);
 	len_oldpwd = ft_strlen((const char *)oldpwd);
 	if (!(print_path = ft_strnew(len_oldpwd - len_home + 1)))
@@ -284,9 +352,9 @@ int		chg_dir(t_data *data, char *path, int print)
 	{
 		if (print)
 			print_path(data);
-		update_env("OLDPWD=", data, cwd);
+		update_env("OLDPWD", data, cwd);
 		getcwd(cwd, PATH_MAX);
-		update_env("PWD=", data, cwd);
+		update_env("PWD", data, cwd);
 	}
 	else
 	{
@@ -357,7 +425,7 @@ int		cd_builtin(t_data *data)
 {
 	char	*home;
 
-	home = 	get_env(data, "HOME=");
+	home = 	get_env(data, "HOME");
 	if (data->split_input[1] == NULL)
 		return ((home && *home) ? chg_dir(data, home, 0) : 1);
 	if (chk_two_args(data))
@@ -367,18 +435,86 @@ int		cd_builtin(t_data *data)
 		if (ft_strcmp(data->split_input[1], "--") == 0)
 			return ((home && *home) ? chg_dir(data, home, 0) : 1);
 		else if (ft_strcmp(data->split_input[1], "-") == 0)
-			return (chg_dir(data, get_env(data, "OLDPWD="), 1));
+			return (chg_dir(data, get_env(data, "OLDPWD"), 1));
 		return (chg_dir(data, data->split_input[1], 0));
 	}
 	return (1);
 }
 
-int		check_builtin(char *input, t_data *data)
+int		setenv_builtin(t_data *data)
+{
+	if (data->split_input[1] == NULL)
+	{
+		write(2, "setenv: Too few arguments\n", 27);
+		return (1);
+	}
+	else if (data->split_input[2] && data->split_input[3])
+	{
+		write(2, "setenv: Too many arguments\n", 28);
+		return (1);
+	}
+	update_env(data->split_input[1], data, data->split_input[2]);
+	return (1);
+}
+
+void	remove_env(t_data *data, size_t pos, int i, int size)
+{
+	char	**fresh;
+
+	if (data->copy_env[pos])
+	{
+		while (data->copy_env[size])
+			size++;
+		if (!(fresh = (char**)malloc(sizeof(char*) * size - 1)))
+			exit(0);
+		size = -1;
+		while (data->copy_env[++i])
+		{
+			if (i == pos)
+				ft_strdel(&(data->copy_env[i++]));;
+			if (!data->copy_env[i])
+				break ;
+			if (!(fresh[++size] = ft_strdup(data->copy_env[i])))
+				exit(0);
+			ft_strdel(&(data->copy_env[i]));
+		}
+		fresh[i - 1] = NULL;
+		free(data->copy_env);
+		data->copy_env = fresh;
+	}
+}
+
+int		unsetenv_builtin(t_data *data)
+{
+	int		size;
+	int		i;
+
+	size = 0;
+	i = -1;
+	if (data->split_input[1] == NULL)
+	{
+		write(2, "unsetenv: Too few arguments\n", 29);
+		return (1);
+	}
+	else if (data->split_input[2] && data->split_input[3])
+	{
+		write(2, "unsetenv: Too many arguments\n", 28);
+		return (1);
+	}
+	remove_env(data, find_env(data, data->split_input[1]), i, size);
+	return (1);
+}
+
+int		check_builtin(t_data *data)
 {
 	if (ft_strcmp(data->split_input[0], "echo") == 0)
-		return (echo_builtin(input, data));
+		return (echo_builtin(data));
 	else if (ft_strcmp(data->split_input[0], "cd") == 0)
 		return (cd_builtin(data));
+	else if (ft_strcmp(data->split_input[0], "setenv") == 0)
+		return (setenv_builtin(data));
+	else if (ft_strcmp(data->split_input[0], "unsetenv") == 0)
+		return (unsetenv_builtin(data));
 	else if (ft_strcmp(data->split_input[0], "env") == 0)
 	{
 		printenv(data);
@@ -387,11 +523,11 @@ int		check_builtin(char *input, t_data *data)
 	return (0);
 }
 
-void	check_input(char *input, t_data *data)
+void	check_input(t_data *data)
 {
-	if (check_builtin(input, data));
+	if (check_builtin(data));
 	else
-		try_exec(input, data);
+		try_exec(data);
 }
 
 int		main(int argc, char **argv, char **env)
@@ -410,7 +546,7 @@ int		main(int argc, char **argv, char **env)
 			data->split_input = ft_strsplit(input, ';'); // Можно потом сплитить по пробелу, чтобы получить для кажой функции свои аргументы
 		else
 			data->split_input = ft_strsplit(input, ' ');
-		check_input(input, data);
+		check_input(data);
 		free(input);
 		clean_data(&data, 0);
 	}
