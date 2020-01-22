@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/12 18:50:22 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/16 19:15:17 by jsance           ###   ########.fr       */
+/*   Updated: 2020/01/22 17:48:25 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,27 +55,37 @@ void	init_env(char **env, t_data **data)
 	(*data)->copy_env[i] = NULL;
 }
 
-void	get_file(const char *path, const char *input, char **file)
+void	get_file(const char *path, const char *input, char **file, int cur_dir)
 {
 	size_t	len;
-	
-	len = ft_strlen(path) + ft_strlen(input) + 2;
-	if (!(*file = ft_strnew(len)))
-		exit(0);
-	ft_strcat(*file, path);
-	ft_strcat(*file, "/");
-	ft_strcat(*file, input);
-	(*file)[len] = '\0';
+
+	if (cur_dir)
+	{
+		len = ft_strlen(path) + 1;
+		if (!(*file = ft_strnew(len)))
+			exit(0);
+		ft_strcpy(*file, path);
+	}
+	else
+	{
+		len = ft_strlen(path) + ft_strlen(input) + 2;
+		if (!(*file = ft_strnew(len)))
+			exit(0);
+		ft_strcat(*file, path);
+		ft_strcat(*file, "/");
+		ft_strcat(*file, input);
+		(*file)[len] = '\0';
+	}
 }
 
-void	go_exec(char *path, t_data *data, int *flag)
+void	go_exec(char *path, t_data *data, int *flag, int cur_dir)
 {
 	pid_t		father;
 	char		*file;
 	int			status;
 	struct stat	st;
 
-	get_file(path, data->split_input[0], &file);
+	get_file(path, data->split_input[0], &file, cur_dir);
 	*flag = 0;
 	if (lstat(file, &st) != -1)
 	{
@@ -138,7 +148,7 @@ int		try_exec(t_data *data, int *flag)
 			}
 			while ((dp = readdir(dir)) != NULL)
 				if (ft_strcmp(dp->d_name, data->split_input[0]) == 0)
-					go_exec(path[i], data, flag);
+					go_exec(path[i], data, flag, 0);
 			closedir(dir);
 		}
 		create_clean_path(data, &path, 1);
@@ -525,6 +535,91 @@ int		check_builtin(t_data *data)
 	return (0);
 }
 
+void	found_len(t_data *data, size_t *len)
+{
+	int		i;
+	int		j;
+	int		start;
+
+	i = -1;
+	while (data->split_input[++i])
+	{
+		j = -1;
+		start = 0;
+		while (data->split_input[i][++j])
+		{
+			if (data->split_input[i][j] != '\\' || start == 1)
+			{
+				(*len)++;
+				start = 0;
+				continue ;
+			}
+			start = 1;
+		}
+		if (start != 1)
+			break ;
+		(*len)++;
+	}
+}
+
+void	create_full_path(t_data *data, char **path)
+{
+	int		i;
+	int		j;
+	int		k;
+	int		start;
+
+	i = -1;
+	k = -1;
+	while (data->split_input[++i])
+	{
+		j = -1;
+		start = 0;
+		while (data->split_input[i][++j])
+		{
+			if (data->split_input[i][j] != '\\' || start == 1)
+			{
+				(*path)[++k] = data->split_input[i][j];
+				start = 0;
+				continue ;
+			}
+			start = 1;
+		}
+		if (start != 1)
+			break ;
+		(*path)[++k] = ' ';
+	}
+}
+
+int		parsing_input(t_data *data, int *flag)
+{
+	char		*full_path;
+	int			i;
+	size_t		len;
+	struct stat	st;
+
+	i = -1;
+	len = 0;
+	found_len(data, &len);
+	full_path = ft_strnew(len + 1);
+	create_full_path(data, &full_path);
+	if (!(ft_strchr((const char *)full_path, '/')))
+	{
+		ft_strdel(&full_path);
+		return (0);
+	}
+	if (lstat(full_path, &st) != -1)
+		go_exec(full_path, data, flag, 1);
+	else
+	{
+		write(2, "minishell: no such file or directory: ", 38);
+		write(2, full_path, ft_strlen(full_path));
+		write(2, "\n", 1);
+	}
+	ft_strdel(&full_path);
+	return (1);
+}
+
 int		check_input(t_data *data)
 {
 	int		ret;
@@ -536,7 +631,14 @@ int		check_input(t_data *data)
 		return (1);
 	else if (ret == -1)
 		return (-1);
-	
+	else if (parsing_input(data, &flag))
+		return (1);
+	else
+	{
+		write(2, "minishell: command not found: ", 30);
+		write(2, data->split_input[0], ft_strlen(data->split_input[0]));
+		write(2, "\n", 1);
+	}
 	return (0);
 }
 
