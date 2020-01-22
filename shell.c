@@ -33,8 +33,6 @@ char	*get_input(void)
 
 	input = NULL;
 	get_next_line(0, &input);
-	if (ft_strcmp((const char *)input, "exit") == 0)
-		exit(0);
 	return (input);
 }
 
@@ -70,7 +68,7 @@ void	get_file(const char *path, const char *input, char **file)
 	(*file)[len] = '\0';
 }
 
-void	go_exec(char *path, t_data *data, int	*flag)
+void	go_exec(char *path, t_data *data, int *flag)
 {
 	pid_t		father;
 	char		*file;
@@ -120,20 +118,18 @@ void	create_clean_path(t_data *data, char ***path, int clean)
 	}
 }
 
-void	try_exec(t_data *data)
+int		try_exec(t_data *data, int *flag)
 {
 	DIR				*dir;
     struct dirent	*dp;
 	size_t			i;
-	int				flag;
 	char			**path;
 
 	i = -1;
-	flag = 1;
 	create_clean_path(data, &path, 0);
 	if (path)
 	{
-		while (path[++i] && flag)
+		while (path[++i] && *flag)
 		{
 			if ((dir = opendir(path[i])) == NULL)
 			{
@@ -142,11 +138,12 @@ void	try_exec(t_data *data)
 			}
 			while ((dp = readdir(dir)) != NULL)
 				if (ft_strcmp(dp->d_name, data->split_input[0]) == 0)
-					go_exec(path[i], data, &flag);
+					go_exec(path[i], data, flag);
 			closedir(dir);
 		}
 		create_clean_path(data, &path, 1);
 	}
+	return ((*flag == 1) ? 0 : 1);
 }
 
 void	create_st(t_data **data)
@@ -173,10 +170,13 @@ void	clean_data(t_data **data, int flag)
 			ft_strdel(&(*data)->copy_env[i]);
 		free((*data)->copy_env);
 	}
-	i = -1;
-	while ((*data)->split_input[++i])
-		ft_strdel(&(*data)->split_input[i]);
-	free((*data)->split_input);
+	else
+	{
+		i = -1;
+		while ((*data)->split_input[++i])
+			ft_strdel(&(*data)->split_input[i]);
+		free((*data)->split_input);
+	}
 	if (flag)
 		free(*data);
 }
@@ -507,7 +507,9 @@ int		unsetenv_builtin(t_data *data)
 
 int		check_builtin(t_data *data)
 {
-	if (ft_strcmp(data->split_input[0], "echo") == 0)
+	if (ft_strcmp(data->split_input[0], "exit") == 0)
+		return (-1);
+	else if (ft_strcmp(data->split_input[0], "echo") == 0)
 		return (echo_builtin(data));
 	else if (ft_strcmp(data->split_input[0], "cd") == 0)
 		return (cd_builtin(data));
@@ -523,17 +525,55 @@ int		check_builtin(t_data *data)
 	return (0);
 }
 
-void	check_input(t_data *data)
+int		check_input(t_data *data)
 {
-	if (check_builtin(data));
-	else
-		try_exec(data);
+	int		ret;
+	int		flag;
+
+	ret = check_builtin(data);
+	flag = 1;
+	if (ret == 1 || try_exec(data, &flag) == 1)
+		return (1);
+	else if (ret == -1)
+		return (-1);
+	
+	return (0);
+}
+
+int		exec_commands(char **commands, t_data *data)
+{
+	int		i;
+	int		ret;
+
+	i = -1;
+	ret = 0;
+	while (commands[++i])
+	{
+		data->split_input = ft_strsplit(commands[i], ' ');
+		ret = check_input(data);
+		clean_data(&data, 0);
+		if (ret == -1)
+			break ;
+	}
+	return (ret);
+}
+
+void	clean_commands(char ***commands)
+{
+	int		i;
+
+	i = -1;
+	while ((*commands)[++i])
+		free((*commands)[i]);
+	free(*commands);
 }
 
 int		main(int argc, char **argv, char **env)
 {
 	char	*input;
 	t_data	*data;
+	int		ret;
+	char	**commands;
 
 	input = NULL;
 	create_st(&data);
@@ -542,13 +582,12 @@ int		main(int argc, char **argv, char **env)
 	{
 		display_prompt();
 		input = get_input();
-		if (ft_strchr((const char *)input, ';') != NULL)
-			data->split_input = ft_strsplit(input, ';'); // Можно потом сплитить по пробелу, чтобы получить для кажой функции свои аргументы
-		else
-			data->split_input = ft_strsplit(input, ' ');
-		check_input(data);
+		commands = ft_strsplit(input, ';');
+		ret = exec_commands(commands ,data);
 		free(input);
-		clean_data(&data, 0);
+		clean_commands(&commands);
+		if (ret == -1)
+			break ;
 	}
 	clean_data(&data, 1);
 	return (0);
