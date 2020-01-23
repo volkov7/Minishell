@@ -29,4 +29,6 @@ typedef struct	s_data
 	char	**split_input;
 }				t_data;
 
+char	*get_env(t_data *data, const char *searching);
+
 #endif

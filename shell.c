@@ -23,16 +23,105 @@ void	printenv(t_data *data)
 
 	i = -1;
 	while (data->copy_env[++i])
-		ft_printf("[%d] = %s\n", i, data->copy_env[i]);
-		// ft_putendl((const char *)data->copy_env[i]);
+		ft_putendl((const char *)data->copy_env[i]);
 }
 
-char	*get_input(void)
+char	*tildejoin(char *input, char *home, size_t index)
+{
+	size_t	len;
+	char	*fresh;
+
+	len = ft_strlen((const char *)input) - 1 + ft_strlen(home);
+	if (!(fresh = ft_strnew(len)))
+		exit(0);
+	ft_strncat(fresh, input, index);
+	ft_strcat(fresh, (const char *)home);
+	ft_strcat(fresh, (const char *)input + index + 1);
+	ft_strdel(&input);
+	return (fresh);
+}
+
+char	*tilde_exp(char *input, t_data *data)
+{
+	char	*fresh;
+	char	*home;
+	size_t	i;
+
+	home = get_env(data, "HOME");
+	i = 0;
+	while (input[i] && input[i] != '~')
+		i++;
+	if (home != NULL)
+	{
+		if ((input[i] == '~' && input[i + 1] == '/' && input[i + 2] != '~')
+			|| (input[i] == '~' && input[i + 1] == '\0'))
+			return (tildejoin(input, home, i));
+	}
+	if (!(fresh = ft_strdup((const char *)input)))
+		exit(0);
+	ft_strdel(&input);
+	return (fresh);
+}
+
+size_t	get_len(char *input, size_t	i)
+{
+	size_t	len;
+
+	len = 0;
+	while (ft_isalpha(input[++i]))
+		len++;
+	return (len);
+}
+
+char	*found_env(char *input, t_data *data, size_t i, size_t *env_len)
+{
+	char	*env;
+	char	*found;
+
+	*env_len = get_len(input, i);
+	if (!(env = ft_strnew(*env_len)))
+		exit(0);
+	ft_strncpy(env, (const char *)input + i + 1, *env_len);
+	found = get_env(data, env);
+	ft_strdel(&env);
+	return (found);
+}
+
+char	*dollar_exp(char *input, t_data *data)
+{
+	char	*fresh;
+	size_t	i;
+	size_t	len;
+	size_t	env_len;
+	char	*found;
+
+	i = 0;
+	while (input[i] && input[i] != '$')
+		i++;
+	if (input[i] == '$' && input[i + 1])
+	{
+		found = found_env(input, data, i, &env_len);
+		len = ft_strlen(input) - env_len - 1 + ft_strlen(found);
+		if (!(fresh = ft_strnew(len)))
+			exit(0);
+		ft_strncpy(fresh, (const char *)input, i);
+		ft_strcat(fresh, (const char *)found);
+		ft_strcat(fresh, (const char *)input + i + env_len + 1);
+	}
+	ft_strdel(&input);
+	return (fresh);
+}
+
+char	*get_input(t_data *data)
 {
 	char	*input;
 
 	input = NULL;
 	get_next_line(0, &input);
+	if (strchr(input, '~') != NULL)
+		input = tilde_exp(input, data);
+	if (strchr(input, '$') != NULL)
+		input = dollar_exp(input, data);
 	return (input);
 }
 
@@ -670,6 +759,23 @@ void	clean_commands(char ***commands)
 	free(*commands);
 }
 
+int		isemptystr(char *str)
+{
+	int		i;
+	int		min;
+	int		max;
+
+	i = -1;
+	min = 33;
+	max = 126;
+	while (str[++i])
+	{
+		if (str[i] >= min && str[i] <= max)
+			return (0);
+	}
+	return (1);
+}
+
 int		main(int argc, char **argv, char **env)
 {
 	char	*input;
@@ -677,19 +783,21 @@ int		main(int argc, char **argv, char **env)
 	int		ret;
 	char	**commands;
 
-	input = NULL;
 	create_st(&data);
 	init_env(env, &data);
-	while (1)
+	while (1 && ret != -1)
 	{
 		display_prompt();
-		input = get_input();
+		input = get_input(data);
+		if (isemptystr(input))
+		{
+			ft_strdel(&input);
+			continue ;
+		}
 		commands = ft_strsplit(input, ';');
 		ret = exec_commands(commands ,data);
 		free(input);
 		clean_commands(&commands);
-		if (ret == -1)
-			break ;
 	}
 	clean_data(&data, 1);
 	return (0);
