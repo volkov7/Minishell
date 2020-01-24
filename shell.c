@@ -68,7 +68,7 @@ size_t	get_len(char *input, size_t	i)
 	size_t	len;
 
 	len = 0;
-	while (ft_isalpha(input[++i]))
+	while (ft_isalpha(input[++i]) || input[i] == '_')
 		len++;
 	return (len);
 }
@@ -98,7 +98,7 @@ char	*dollar_exp(char *input, t_data *data)
 	i = 0;
 	while (input[i] && input[i] != '$')
 		i++;
-	if (input[i] == '$' && input[i + 1])
+	if (input[i] == '$' && input[i + 1] && input[i + 1] != '$')
 	{
 		found = found_env(input, data, i, &env_len);
 		len = ft_strlen(input) - env_len - 1 + ft_strlen(found);
@@ -107,17 +107,36 @@ char	*dollar_exp(char *input, t_data *data)
 		ft_strncpy(fresh, (const char *)input, i);
 		ft_strcat(fresh, (const char *)found);
 		ft_strcat(fresh, (const char *)input + i + env_len + 1);
+		ft_strdel(&input);
+		return (fresh);
 	}
-	ft_strdel(&input);
-	return (fresh);
+	return (input);
+}
+
+void	change_whitespaces(char **str)
+{
+	size_t	i;
+
+	i = 0;
+	while ((*str)[i])
+	{
+		if ((*str)[i] == '\n' || (*str)[i] == '\t')
+			(*str)[i] = ' ';
+		i++;
+	}
 }
 
 char	*get_input(t_data *data)
 {
 	char	*input;
+	char	*tmp;
 
 	input = NULL;
 	get_next_line(0, &input);
+	tmp = ft_strtrim((const char *)input);
+	change_whitespaces(&tmp);
+	ft_strdel(&input);
+	input = tmp;
 	if (strchr(input, '~') != NULL)
 		input = tilde_exp(input, data);
 	if (strchr(input, '$') != NULL)
@@ -167,6 +186,13 @@ void	get_file(const char *path, const char *input, char **file, int cur_dir)
 	}
 }
 
+void	shell_err(const char *err, char *file)
+{
+	write(2, err, ft_strlen(err));
+	write(2, file, ft_strlen(file));
+	write(2, "\n", 1);
+}
+
 void	go_exec(char *path, t_data *data, int *flag, int cur_dir)
 {
 	pid_t		father;
@@ -174,6 +200,7 @@ void	go_exec(char *path, t_data *data, int *flag, int cur_dir)
 	int			status;
 	struct stat	st;
 
+	signal(SIGINT, running_signal_handler);
 	get_file(path, data->split_input[0], &file, cur_dir);
 	*flag = 0;
 	if (lstat(file, &st) != -1)
@@ -189,7 +216,7 @@ void	go_exec(char *path, t_data *data, int *flag, int cur_dir)
 					execve(file, data->split_input, data->copy_env);
 			}
 			else
-				write(2, "minishell: permission denied: \n", 31);
+				shell_err("minishell: permission denied: ", data->split_input[0]);
 		}
 	}
 	free(file);
@@ -231,14 +258,11 @@ int		try_exec(t_data *data, int *flag)
 		while (path[++i] && *flag)
 		{
 			if ((dir = opendir(path[i])) == NULL)
-			{
-				closedir(dir);
 				continue ;
-			}
 			while ((dp = readdir(dir)) != NULL)
 				if (ft_strcmp(dp->d_name, data->split_input[0]) == 0)
 					go_exec(path[i], data, flag, 0);
-			closedir(dir);
+			(void)closedir(dir);
 		}
 		create_clean_path(data, &path, 1);
 	}
@@ -457,15 +481,12 @@ int		chg_dir(t_data *data, char *path, int print)
 	}
 	else
 	{
-		write(2, "cd: ", 4);
 		if (access(path, F_OK) == -1)
-			write(2, "no such file or directory: ", 27);
+			shell_err("cd: no such file or directory: ", path);
 		else if (access(path, R_OK) == -1)
-			write(2, "permission denied: ", 19);
+			shell_err("cd: permission denied: ", path);
 		else
-			write(2, "not a directory: ", 17);
-		write(2, path, ft_strlen(path));
-		write(2, "\n", 1);
+			shell_err("cd: not a directory: ", path);
 	}
 	return (1);
 }
@@ -508,9 +529,7 @@ int		chk_two_args(t_data *data)
 		getcwd(cwd, PATH_MAX);
 		if (!(tmp = path_replace(cwd, data)))
 		{
-			write(2, "cd: string not in pwd:", 22);
-			write(2, data->split_input[1], ft_strlen(data->split_input[1]));
-			write(2, "\n", 1);
+			shell_err("cd: string not in pwd: ", data->split_input[1]);
 			return (1);
 		}
 		ret = chg_dir(data, tmp, 0);
@@ -540,6 +559,34 @@ int		cd_builtin(t_data *data)
 	return (1);
 }
 
+char	*delete_quotes(char *new_value)
+{
+	int		i;
+	size_t	count;
+	size_t	len;
+	char	*fresh;
+
+	i = -1;
+	count = 0;
+	while (new_value[++i])
+		if (IS_QUOTE(new_value[i]))
+			count++;
+	len = ft_strlen(new_value) - count;
+	if (!(fresh = ft_strnew(len)))
+		exit(0);
+	i = -1;
+	count = 0;
+	while (new_value[++i])
+	{
+		if (IS_QUOTE(new_value[i]))
+			continue ;
+		fresh[count] = new_value[i];
+		count++;
+	}
+	ft_strdel(&new_value);
+	return (fresh);
+}
+
 int		setenv_builtin(t_data *data)
 {
 	if (data->split_input[1] == NULL)
@@ -552,6 +599,8 @@ int		setenv_builtin(t_data *data)
 		write(2, "setenv: Too many arguments\n", 28);
 		return (1);
 	}
+	if (data->split_input[2])
+		data->split_input[2] = delete_quotes(data->split_input[2]);
 	update_env(data->split_input[1], data, data->split_input[2]);
 	return (1);
 }
@@ -683,11 +732,9 @@ void	create_full_path(t_data *data, char **path)
 int		parsing_input(t_data *data, int *flag)
 {
 	char		*full_path;
-	int			i;
 	size_t		len;
 	struct stat	st;
 
-	i = -1;
 	len = 0;
 	found_len(data, &len);
 	full_path = ft_strnew(len + 1);
@@ -700,11 +747,7 @@ int		parsing_input(t_data *data, int *flag)
 	if (lstat(full_path, &st) != -1)
 		go_exec(full_path, data, flag, 1);
 	else
-	{
-		write(2, "minishell: no such file or directory: ", 38);
-		write(2, full_path, ft_strlen(full_path));
-		write(2, "\n", 1);
-	}
+		shell_err("minishell: no such file or directory: ", full_path);
 	ft_strdel(&full_path);
 	return (1);
 }
@@ -723,11 +766,7 @@ int		check_input(t_data *data)
 	else if (parsing_input(data, &flag))
 		return (1);
 	else
-	{
-		write(2, "minishell: command not found: ", 30);
-		write(2, data->split_input[0], ft_strlen(data->split_input[0]));
-		write(2, "\n", 1);
-	}
+		shell_err("minishell: command not found: ", data->split_input[0]);
 	return (0);
 }
 
@@ -776,6 +815,17 @@ int		isemptystr(char *str)
 	return (1);
 }
 
+void	running_signal_handler(int sig)
+{
+	write(1, "\n", 1);
+}
+
+void	signal_handler(int sig)
+{
+	write(1, "\n", 1);
+	display_prompt();
+}
+
 int		main(int argc, char **argv, char **env)
 {
 	char	*input;
@@ -787,6 +837,7 @@ int		main(int argc, char **argv, char **env)
 	init_env(env, &data);
 	while (1 && ret != -1)
 	{
+		signal(SIGINT, signal_handler);
 		display_prompt();
 		input = get_input(data);
 		if (isemptystr(input))

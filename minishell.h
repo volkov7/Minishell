@@ -17,6 +17,7 @@
 # include "./libft/ft_printf.h"
 # include <unistd.h>
 # include <dirent.h>
+# include <signal.h>
 # include <sys/wait.h>
 
 # define IS_QUOTE(c) (c == '"' || c == '\'')
@@ -30,5 +31,6 @@ typedef struct	s_data
 }				t_data;
 
 char	*get_env(t_data *data, const char *searching);
+void	running_signal_handler(int sig);
 
 #endif
