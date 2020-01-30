@@ -3,22 +3,23 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
+/*   By: volkker <volkker@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/13 14:07:37 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:24:02 by jsance           ###   ########.fr       */
+/*   Updated: 2020/01/30 08:55:56 by volkker          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MINISHELL_H
 # define MINISHELL_H
 
-# include "get_next_line.h"
-# include "./libft/ft_printf.h"
+# include "../libft/get_next_line.h"
+# include "../libft/libft.h"
 # include <unistd.h>
 # include <dirent.h>
 # include <signal.h>
 # include <sys/wait.h>
+# include <sys/stat.h>
 
 # define IS_QUOTE(c) (c == '"' || c == '\'')
 # define PATH_MAX 1024

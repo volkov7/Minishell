@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: jsance <jsance@student.42.fr>              +#+  +:+       +#+         #
+#    By: volkker <volkker@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2019/09/07 09:50:40 by jsance            #+#    #+#              #
-#    Updated: 2019/09/14 14:21:40 by jsance           ###   ########.fr        #
+#    Updated: 2020/01/30 08:54:03 by volkker          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,7 +21,7 @@ ft_isascii.c ft_lstdelone.c ft_memset.c ft_strclr.c ft_strmap.c ft_strsub.c \
 ft_isdigit.c ft_lstiter.c ft_putchar.c ft_strcmp.c ft_strmapi.c ft_strtrim.c \
 ft_isprint.c ft_lstmap.c ft_putchar_fd.c ft_strcpy.c ft_strncat.c ft_tolower.c \
 ft_itoa.c ft_lstnew.c ft_putendl.c ft_strdel.c ft_strncmp.c ft_toupper.c \
-ft_list_last.c ft_memalloc.c ft_putendl_fd.c ft_strdup.c ft_strncpy.c
+ft_list_last.c ft_memalloc.c ft_putendl_fd.c ft_strdup.c ft_strncpy.c get_next_line.c
 FILE_O = ft_list_push_back.o ft_memccpy.o ft_putnbr.o ft_strequ.o ft_strnequ.o \
 ft_list_reverse.o ft_memchr.o ft_putnbr_fd.o ft_striter.o ft_strnew.o \
 ft_atoi.o ft_list_size.o ft_memcmp.o ft_putstr.o ft_striteri.o ft_strnstr.o \
@@ -32,7 +32,7 @@ ft_isascii.o ft_lstdelone.o ft_memset.o ft_strclr.o ft_strmap.o ft_strsub.o \
 ft_isdigit.o ft_lstiter.o ft_putchar.o ft_strcmp.o ft_strmapi.o ft_strtrim.o \
 ft_isprint.o ft_lstmap.o ft_putchar_fd.o ft_strcpy.o ft_strncat.o ft_tolower.o \
 ft_itoa.o ft_lstnew.o ft_putendl.o ft_strdel.o ft_strncmp.o ft_toupper.o \
-ft_list_last.o ft_memalloc.o ft_putendl_fd.o ft_strdup.o ft_strncpy.o
+ft_list_last.o ft_memalloc.o ft_putendl_fd.o ft_strdup.o ft_strncpy.o get_next_line.o
 FLAG = -Wall -Wextra -Werror
 
 all: $(NAME)
@@ -43,7 +43,7 @@ $(NAME): $(FILE_O)
 		@tput setaf 2; tput bold; echo "All right!"
 
 %.o: %.c 
-	gcc $(FLAG) -c $< -I ./libft.h -o $@
+	@gcc $(FLAG) -c $< -I ./libft.h -o $@
 
 clean:
 		@rm -f $(FILE_O)

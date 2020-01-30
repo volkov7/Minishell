@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ft_strsplit.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
+/*   By: volkker <volkker@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/09/08 13:44:07 by jsance            #+#    #+#             */
-/*   Updated: 2019/09/18 17:36:13 by jsance           ###   ########.fr       */
+/*   Updated: 2020/01/30 10:02:13 by volkker          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,18 @@ static size_t		word_count(const char *str, char c)
 	return (words);
 }
 
+int					copy_word(char **fresh, const char *str, size_t start, size_t end)
+{
+	char	*tmp;
+	
+	if (!(tmp = ft_strsub(str, start, end - start)))
+		return (1);
+	if (!(ft_strcpy(*fresh, (const char *)tmp)))
+		return (1);
+	ft_strdel(&tmp);
+	return (0);
+}
+
 static int			split(char **fresh, size_t words, char const *str, char c)
 {
 	size_t	i;
@@ -53,7 +65,7 @@ static int			split(char **fresh, size_t words, char const *str, char c)
 				free(fresh[i]);
 			return (1);
 		}
-		if (!(ft_strcpy(fresh[i], ft_strsub(str, start, end - start))))
+		if (copy_word(&fresh[i], str, start, end))
 			return (1);
 		i++;
 		start = end + 1;
