@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/09/06 09:46:18 by jsance            #+#    #+#             */
-/*   Updated: 2019/09/12 16:33:51 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:53:47 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,10 @@ size_t	ft_strlen(const char *s)
 	size_t count;
 
 	count = 0;
-	while (s[count] != '\0')
-		count++;
+	if (s)
+	{
+		while (s[count] != '\0')
+			count++;
+	}
 	return (count);
 }

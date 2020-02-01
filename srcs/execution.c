@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/25 19:54:04 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:15:16 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:57:40 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ void	go_exec(char *path, t_data *data, int *flag, int cur_dir)
 					execve(file, data->split_input, data->copy_env);
 			}
 			else
-				shell_err("minishell: permission denied: ", data->split_input[0]);
+				sh_err("minishell: permission denied: ", data->split_input[0]);
 		}
 	}
 	free(file);

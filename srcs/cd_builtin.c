@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/25 18:50:29 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:11:18 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:58:35 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,11 +48,11 @@ int		chg_dir(t_data *data, char *path, int print)
 	else
 	{
 		if (access(path, F_OK) == -1)
-			shell_err("cd: no such file or directory: ", path);
+			sh_err("cd: no such file or directory: ", path);
 		else if (access(path, R_OK) == -1)
-			shell_err("cd: permission denied: ", path);
+			sh_err("cd: permission denied: ", path);
 		else
-			shell_err("cd: not a directory: ", path);
+			sh_err("cd: not a directory: ", path);
 	}
 	return (1);
 }
@@ -95,7 +95,7 @@ int		chk_two_args(t_data *data)
 		getcwd(cwd, PATH_MAX);
 		if (!(tmp = path_replace(cwd, data)))
 		{
-			shell_err("cd: string not in pwd: ", data->split_input[1]);
+			sh_err("cd: string not in pwd: ", data->split_input[1]);
 			return (1);
 		}
 		ret = chg_dir(data, tmp, 0);

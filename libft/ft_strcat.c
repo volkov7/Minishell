@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/07/09 16:53:47 by jsance            #+#    #+#             */
-/*   Updated: 2019/09/08 13:16:49 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:52:55 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,14 +15,17 @@ char		*ft_strcat(char *dest, const char *src)
 	int i;
 
 	i = 0;
-	while (dest[i] != '\0')
-		i++;
-	while (*src != '\0')
+	if (src)
 	{
-		dest[i] = *src;
-		i++;
-		src++;
+		while (dest[i] != '\0')
+			i++;
+		while (*src != '\0')
+		{
+			dest[i] = *src;
+			i++;
+			src++;
+		}
+		dest[i] = '\0';
 	}
-	dest[i] = '\0';
 	return (dest);
 }

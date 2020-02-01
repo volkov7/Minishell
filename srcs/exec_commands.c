@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/25 19:59:17 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:02:31 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:58:44 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ int		parsing_input(t_data *data, int *flag)
 	if (lstat(full_path, &st) != -1)
 		go_exec(full_path, data, flag, 1);
 	else
-		shell_err("minishell: no such file or directory: ", full_path);
+		sh_err("minishell: no such file or directory: ", full_path);
 	ft_strdel(&full_path);
 	return (1);
 }
@@ -69,7 +69,7 @@ int		check_input(t_data *data)
 	else if (parsing_input(data, &flag))
 		return (1);
 	else
-		shell_err("minishell: command not found: ", data->split_input[0]);
+		sh_err("minishell: command not found: ", data->split_input[0]);
 	return (0);
 }
 

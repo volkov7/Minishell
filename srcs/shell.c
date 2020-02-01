@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/12 18:50:22 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:16:24 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:33:36 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,10 +54,13 @@ int		isemptystr(char *str)
 	i = -1;
 	min = 33;
 	max = 126;
-	while (str[++i])
+	if (str)
 	{
-		if (str[i] >= min && str[i] <= max)
-			return (0);
+		while (str[++i])
+		{
+			if (str[i] >= min && str[i] <= max)
+				return (0);
+		}
 	}
 	return (1);
 }

@@ -6,7 +6,7 @@
 /*   By: jsance <jsance@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/25 20:05:43 by jsance            #+#    #+#             */
-/*   Updated: 2020/01/25 20:09:45 by jsance           ###   ########.fr       */
+/*   Updated: 2020/02/01 13:57:37 by jsance           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ void	signal_handler(int sig)
 	display_prompt();
 }
 
-void	shell_err(const char *err, char *file)
+void	sh_err(const char *err, char *file)
 {
 	write(2, err, ft_strlen(err));
 	write(2, file, ft_strlen(file));
